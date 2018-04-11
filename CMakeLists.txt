@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_library(rc-fshare STATIC
     "src/pid.cpp"
-    "src/pid_tuner.cpp"
+    # "src/pid_tuner.cpp"
     "src/git_version.cpp")
 
 

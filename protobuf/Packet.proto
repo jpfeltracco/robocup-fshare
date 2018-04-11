@@ -1,0 +1,82 @@
+syntax="proto2";
+
+message RobotRx {
+    // Info for Mac Info (Destination/Broadcast, SeqNum?, etc?)
+    // Broadcast if no robot is specified
+    optional fixed32 robotNum = 1;
+
+    optional Control control = 2;
+    repeated DebugRequest request = 3;
+}
+
+message RobotTx {
+    optional RobotStatus status = 1;
+    optional DebugResponse response = 2;
+}
+
+message Control {
+    enum ShootMode {
+        Kick = 0;
+        Chip = 1;
+    }
+
+    enum TriggerMode {
+        Off = 0;
+        Immediate = 1;
+        OnBreakBeam = 2;
+    }
+
+    required float xVelocity = 1         [default = 0];
+    required float yVelocity = 2         [default = 0];
+    required float aVelocity = 3         [default = 0];
+    required float dVelocity = 4         [default = 0];
+    required uint32 kcStrength = 5       [default = 255];
+    required ShootMode shootMode = 6     [default = Kick];
+    required TriggerMode triggerMode = 7 [default = Off];
+}
+
+message RobotStatus {
+    enum MotorStatus {
+        MotorGood = 0;
+        MotorError = 1;
+    }
+
+    enum BallSenseStatus {
+        NoBall = 0;
+        HasBall = 1;
+    }
+
+    enum KickStatus {
+        Uncharched = 0;
+        Charged = 1;
+    }
+
+    enum FPGAStatus {
+        FPGAGood = 0;
+        FPGAError = 1;
+    }
+
+    optional float battery = 1;
+    repeated MotorStatus motors = 2 [packed=true];
+    optional BallSenseStatus ballSense = 3;
+    optional KickStatus kickStatus = 4;
+    optional FPGAStatus fpgaStatus = 5;
+}
+
+enum DebugVar {
+    PID_ERROR = 0;
+    MOTOR_DUTY = 1;
+    WHEEL_VEL = 2;
+    STALL_COUNTER = 3;
+    TARGET_WHEEL_VEL = 4;
+    TEST = 5;
+}
+
+message DebugRequest {
+    optional DebugVar debugType = 1;
+}
+
+message DebugResponse {
+    optional DebugVar debugType = 1;
+    repeated float values = 2;
+}

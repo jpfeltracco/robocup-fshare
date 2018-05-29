@@ -1,15 +1,19 @@
 #pragma once
 
+#ifndef EIGEN_HAS_CXX11_MATH
 #define EIGEN_HAS_CXX11_MATH 0
+#endif
 #include <Eigen/Dense>
 #include <array>
 #include <cmath>
 //#include "const-math.hpp"
 
-constexpr double DegreesToRadians(double val) { return val * M_PI / 180.0; }
 
 /// Model parameters for a robot.  Used by the controls system.
 class RobotModel {
+
+constexpr double DegreesToRadians(double val) { return val * M_PI / 180.0; }
+
 private:
     RobotModel() {
         WheelRadius = 0.02786;

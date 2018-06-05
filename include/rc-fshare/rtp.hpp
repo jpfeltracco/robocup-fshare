@@ -62,6 +62,8 @@ struct ControlMessage {
     int16_t bodyX;
     int16_t bodyY;
     int16_t bodyW;
+    float kp;
+    float ki;
     int8_t dribbler;
     uint8_t kickStrength;
     unsigned shootMode : 1;    // 0 = kick, 1 = chip
@@ -69,8 +71,6 @@ struct ControlMessage {
                                //    unsigned debugStuff : 5;
     unsigned song : 2;         // 0 = stop, 1 = continue, 2 = GT fight song
 } __attribute__((packed));
-static_assert(sizeof(ControlMessage) == 9,
-              "sizeof(ControlMessage) is not what we expect");
 
 struct RobotTxMessage {
     unsigned uid : 6;
@@ -89,8 +89,6 @@ struct RobotTxMessage {
 //    static_assert(s == t, "wrong size");
 //};
 // check_size<sizeof(RobotTxMessage), 10> ch;
-static_assert(sizeof(RobotTxMessage) == 10,
-              "sizeof(RobotTxMessage) is not what we expect");
 
 struct RobotStatusMessage {
     /** @battVoltage is a direct reading from the mbed's ADC and is sent over
@@ -109,6 +107,7 @@ struct RobotStatusMessage {
     unsigned kickHealthy : 1;      // 0 = unhealthy, 1 = healthy
     unsigned fpgaStatus : 1;       // 0 = good, 1 = error
     int16_t encDeltas[4];          // encoder changes since last packet
+    float error;
     int16_t buffer;                // ecnDeltas is getting overwritten, temporary fix?
 } __attribute__((packed));
 

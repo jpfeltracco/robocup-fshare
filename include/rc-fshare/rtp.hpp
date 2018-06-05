@@ -62,8 +62,8 @@ struct ControlMessage {
     int16_t bodyX;
     int16_t bodyY;
     int16_t bodyW;
-    float kp;
-    float ki;
+    // float kp;
+    // float ki;
     int8_t dribbler;
     uint8_t kickStrength;
     unsigned shootMode : 1;    // 0 = kick, 1 = chip
@@ -107,7 +107,7 @@ struct RobotStatusMessage {
     unsigned kickHealthy : 1;      // 0 = unhealthy, 1 = healthy
     unsigned fpgaStatus : 1;       // 0 = good, 1 = error
     int16_t encDeltas[4];          // encoder changes since last packet
-    float error;
+    // float error;
     int16_t buffer;                // ecnDeltas is getting overwritten, temporary fix?
 } __attribute__((packed));
 

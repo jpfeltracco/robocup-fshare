@@ -51,7 +51,7 @@ static_assert(sizeof(Header) == 2, "sizeof(Header) is not what we expect");
 
 // binary-packed version of Control.proto
 struct ControlMessage {
-    /** body{X,Y,W} are multiplied by this value before being sent over the
+    /** world{X,Y,W} are multiplied by this value before being sent over the
      * radio and must be then divided by this value on the receiving side. This
      * is to avoid loss of precision when sending float velocity values across
      * the air as ints.
@@ -59,9 +59,10 @@ struct ControlMessage {
     static constexpr auto VELOCITY_SCALE_FACTOR = 1000;
 
     //    uint8_t uid;
-    int16_t bodyX;
-    int16_t bodyY;
-    int16_t bodyW;
+    int16_t worldX;    // x velocity in world coordinates
+    int16_t worldY;    // y velocity in world coordinates
+    int16_t W;         // rotational velocity
+    int16_t visRotEst; // latest vision estimate of robot's angle
     int8_t dribbler;
     uint8_t kickStrength;
     unsigned shootMode : 1;    // 0 = kick, 1 = chip

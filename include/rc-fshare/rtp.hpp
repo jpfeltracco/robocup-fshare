@@ -57,6 +57,7 @@ struct ControlMessage {
      * the air as ints.
      */
     static constexpr auto VELOCITY_SCALE_FACTOR = 1000;
+    static constexpr auto ROTATION_SCALE_FACTOR = 8000;
 
     //    uint8_t uid;
     int16_t worldX;    // x velocity in world coordinates
@@ -70,8 +71,6 @@ struct ControlMessage {
                                //    unsigned debugStuff : 5;
     unsigned song : 2;         // 0 = stop, 1 = continue, 2 = GT fight song
 } __attribute__((packed));
-static_assert(sizeof(ControlMessage) == 9,
-              "sizeof(ControlMessage) is not what we expect");
 
 struct RobotTxMessage {
     unsigned uid : 6;

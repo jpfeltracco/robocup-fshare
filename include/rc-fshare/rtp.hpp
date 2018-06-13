@@ -84,13 +84,6 @@ struct RobotTxMessage {
 
 } __attribute__((packed));
 
-//
-// template<int s, int t> struct check_size {
-//    static_assert(s == t, "wrong size");
-//};
-// check_size<sizeof(RobotTxMessage), 10> ch;
-static_assert(sizeof(RobotTxMessage) == 10,
-              "sizeof(RobotTxMessage) is not what we expect");
 
 struct RobotStatusMessage {
     /** @battVoltage is a direct reading from the mbed's ADC and is sent over

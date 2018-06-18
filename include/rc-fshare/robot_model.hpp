@@ -58,6 +58,7 @@ private:
             DegToRad(0 + 30),    // M4
         };
 
+
         WheelRadius = 0.02786;
         WheelDist = 0.0798576;
         EncTicksPerRev = 2048 * 3;
@@ -73,6 +74,8 @@ private:
         // Invert because our wheels spin opposite to paper
         BotToWheel *= -1;
         BotToWheel /= WheelRadius;
+
+//        BotToWheel.inve
 
         WheelToBot = (BotToWheel.transpose() * BotToWheel).inverse() * BotToWheel.transpose();
 

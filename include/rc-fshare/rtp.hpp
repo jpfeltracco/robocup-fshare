@@ -1,24 +1,142 @@
 #pragma once
 
 #include <cstdint>
-#include <string>
 #include <vector>
-#include <map>
-#include <limits>
+#include <string>
 
 namespace rtp {
 
-// configured by the PKT_CFG1 register
-constexpr uint8_t BROADCAST_ADDRESS = 0x00;
+enum MessageType : uint8_t {
+    CONTROL = 0,
+    ROBOT_STATUS,
+    PKT_ACK,
+    DEBUG_REQUEST,
+    DEBUG_RESPONSE,
+    PING
+    // FILE,
+    // FILE_CHECK
+};
 
-constexpr uint8_t BASE_STATION_ADDRESS = 0xFF - 1;
-constexpr uint8_t ROBOT_ADDRESS = 0x01;  // All robots have the same address
-constexpr uint8_t LOOPBACK_ADDRESS = 2;
+enum DebugVar : uint8_t {
+    PID_ERROR,
+    MOTOR_DUTY,
+    WHEEL_VEL,
+    STALL_COUNTER,
+    TARGET_WHEEL_VEL,
+    TEST
+};
 
-// The value 0 is a valid robot id, so we have to choose something else to
-// represent "null"
-constexpr auto INVALID_ROBOT_UID = 0b111111;
-constexpr auto ANY_ROBOT_UID = 0b111111 - 1;
+constexpr uint16_t ROBOT_PAN = 0x0001;
+constexpr uint16_t BASE_PAN = 0x0002;
+constexpr uint16_t BROADCAST_PAN = 0xFFFF;
+
+constexpr uint16_t BROADCAST_ADDR = 0xFFFF;
+
+constexpr uint8_t INVALID_ROBOT_UID = 0xFF - 1;
+constexpr uint8_t ANY_ROBOT_UID = 0xFF;
+
+struct MACInfo {
+    uint8_t seqNum;
+    uint8_t ackRequest;
+    uint8_t framePending;
+    uint16_t srcAddr;
+    uint16_t destPAN;
+    uint16_t destAddr;
+    MACInfo() : seqNum(0), ackRequest(0), framePending(0),
+        srcAddr(BROADCAST_ADDR), destPAN(BROADCAST_PAN),
+        destAddr(BROADCAST_ADDR) {}
+} __attribute__((packed));
+
+struct Header {
+    MessageType type;
+} __attribute__((packed));
+
+struct ControlMessage {
+    // uint8_t uid;
+    int16_t bodyX;
+    int16_t bodyY;
+    int16_t bodyW;
+    int8_t dribbler;
+    uint8_t kickStrength;
+    unsigned shootMode : 1;    // 0 = kick, 1 = chip
+    unsigned triggerMode : 2;  // 0 = off, 1 = immediate, 2 = on break beam
+} __attribute__((packed));
+
+constexpr auto VELOCITY_SCALE_FACTOR = 1000;
+struct RobotStatusMessage {
+    // uint8_t uid;
+    uint8_t battVoltage;
+    unsigned motorErrors : 5;      // 0 = good, 1 = error
+    unsigned ballSenseStatus : 1;  // 0 = no-ball, 1 = has-ball
+    unsigned kickStatus : 1;       // 0 = uncharged, 1 = charged
+    unsigned fpgaStatus : 1;       // 0 = good, 1 = error
+} __attribute__((packed));
+
+struct DebugRequestMessage {
+    DebugVar debugType;
+};
+
+struct DebugResponseMessage {
+    DebugVar debugType;
+    float values[5];
+};
+
+// struct FileCheckMessage {
+//     uint32_t chkSum;
+//     uint32_t filesize;
+//     char fileName[8];
+//     char fileExt[3];
+// } __attribute__((packed));
+
+
+class SubPacket {
+public:
+    rtp::Header header;
+    std::vector<uint8_t> payload;
+    bool empty = true;
+
+    size_t size() const {
+        return sizeof(Header) + payload.size();
+    }
+
+    void clear() {
+        header = {};
+        payload.clear();
+        empty = true;
+    }
+
+    static size_t messageSize(MessageType type) {
+        switch(type) {
+            case CONTROL: return sizeof(struct ControlMessage);
+            case ROBOT_STATUS: return sizeof(struct RobotStatusMessage);
+            case PKT_ACK: return 0;
+            case DEBUG_REQUEST: return sizeof(struct DebugRequestMessage);
+            case DEBUG_RESPONSE: return sizeof(struct DebugResponseMessage);
+            case PING: return 0;
+            default: return 0;
+        }
+    }
+};
+
+class Packet {
+public:
+    rtp::MACInfo macInfo;
+    std::vector<SubPacket> subPackets;
+    bool empty = true;
+
+    size_t size() const {
+        size_t size = 0;
+        for (auto i : subPackets) {
+            size += i.size();
+        }
+        return size;
+    }
+
+    void clear() {
+        subPackets.clear();
+        empty = true;
+    }
+};
 
 template <typename PACKET_TYPE>
 void serializeToVector(const PACKET_TYPE& pkt, std::vector<uint8_t>* buf) {
@@ -27,165 +145,4 @@ void serializeToVector(const PACKET_TYPE& pkt, std::vector<uint8_t>* buf) {
     for (size_t i = 0; i < sizeof(PACKET_TYPE); ++i) buf->push_back(data[i]);
 }
 
-// a hackish way of enforcing 'enum class' scopes without
-// the bitfield restrictions
-namespace PortTypeNamespace {
-enum PortTypeEnum { SINK, LINK, CONTROL, LEGACY, PING };
 }
-using PortType = PortTypeNamespace::PortTypeEnum;
-
-namespace MessageTypeNamespace {
-enum MessageTypeEnum { CONTROL, TUNING, UPGRADE, MISC };
-}
-using MessageType = MessageTypeNamespace::MessageTypeEnum;
-
-struct Header {
-    Header(PortType p = PortType::SINK, MessageType t = MessageType::CONTROL)
-        : address(INVALID_ROBOT_UID), port(p), type(t) {}
-
-    uint8_t address;
-    PortType port : 4;
-    MessageType type : 4;
-} __attribute__((packed));
-static_assert(sizeof(Header) == 2, "sizeof(Header) is not what we expect");
-
-// binary-packed version of Control.proto
-struct ControlMessage {
-    /** body{X,Y,W} are multiplied by this value before being sent over the
-     * radio and must be then divided by this value on the receiving side. This
-     * is to avoid loss of precision when sending float velocity values across
-     * the air as ints.
-     */
-    static constexpr auto VELOCITY_SCALE_FACTOR = 1000;
-
-    //    uint8_t uid;
-    int16_t bodyX;
-    int16_t bodyY;
-    int16_t bodyW;
-    int8_t dribbler;
-    uint8_t kickStrength;
-    unsigned shootMode : 1;    // 0 = kick, 1 = chip
-    unsigned triggerMode : 2;  // 0 = off, 1 = immediate, 2 = on break beam
-                               //    unsigned debugStuff : 5;
-    unsigned song : 2;         // 0 = stop, 1 = continue, 2 = GT fight song
-} __attribute__((packed));
-static_assert(sizeof(ControlMessage) == 9,
-              "sizeof(ControlMessage) is not what we expect");
-
-struct RobotTxMessage {
-    unsigned uid : 6;
-    enum {
-        ControlMessageType,
-    } messageType : 2;
-
-    union RobotTxMessages {
-        ControlMessage controlMessage;
-    } message;
-
-} __attribute__((packed));
-
-//
-// template<int s, int t> struct check_size {
-//    static_assert(s == t, "wrong size");
-//};
-// check_size<sizeof(RobotTxMessage), 10> ch;
-static_assert(sizeof(RobotTxMessage) == 10,
-              "sizeof(RobotTxMessage) is not what we expect");
-
-struct RobotStatusMessage {
-    /** @battVoltage is a direct reading from the mbed's ADC and is sent over
-     * the air as-is.  Soccer must convert this reading into an actual voltage
-     * value by multiplying it by the scale factor. The theoretical scale factor
-     * is 0.100546875, but this has been adjusted after testing to the value
-     * below.
-     */
-    static constexpr auto BATTERY_SCALE_FACTOR = 0.09884f;
-
-    uint8_t uid;
-    uint8_t battVoltage;
-    unsigned motorErrors : 5;      // 0 = good, 1 = error
-    unsigned ballSenseStatus : 1;  // 0 = no-ball, 1 = has-ball
-    unsigned kickStatus : 1;       // 0 = uncharged, 1 = charged
-    unsigned kickHealthy : 1;      // 0 = unhealthy, 1 = healthy
-    unsigned fpgaStatus : 1;       // 0 = good, 1 = error
-    int16_t encDeltas[4];          // encoder changes since last packet
-} __attribute__((packed));
-
-// Packet sizes
-static constexpr auto HeaderSize = sizeof(Header);
-static constexpr auto ForwardSize = HeaderSize + 6 * sizeof(RobotTxMessage);
-static constexpr auto ReverseSize = HeaderSize + sizeof(RobotStatusMessage);
-
-/**
- * @brief Real-Time packet definition
- */
-class Packet {
-public:
-    rtp::Header header;
-    std::vector<uint8_t> payload;
-
-    Packet(){};
-
-    template <typename T, typename = std::enable_if_t<
-                              std::is_convertible<T, uint8_t>::value>>
-    Packet(const std::vector<T>& v, PortType p = PortType::LEGACY) {
-        assign(v);
-    }
-
-    template <
-        typename T, std::size_t N,
-        typename = std::enable_if_t<std::is_convertible<T, uint8_t>::value>>
-    Packet(const std::array<T, N>& v, PortType p = PortType::LEGACY) {
-        assign(v);
-    }
-
-    template <typename T, typename = std::enable_if_t<
-                              std::is_convertible<T, uint8_t>::value>>
-    Packet(const std::initializer_list<T>& payloadBytes,
-           PortType p = PortType::PING)
-        : header(p, MessageType::MISC),
-          payload(payloadBytes.begin(), payloadBytes.end()) {}
-
-    Packet(const std::string& s, PortType p = PortType::SINK)
-        : header(p, MessageType::MISC), payload(s.begin(), s.end()) {
-        payload.push_back('\0');
-    }
-
-    /// Deserialize a packet from a buffer
-    template <typename T, typename = std::enable_if_t<
-                              std::is_convertible<T, uint8_t>::value>>
-    void assign(const std::vector<T>& buf) {
-        // check that the buffer is big enough
-        if (buf.size() >= HeaderSize) {
-            // deserialize header
-            header = *(reinterpret_cast<const Header*>(buf.data()));
-            // set the payload bytes
-            payload.assign(buf.begin() + HeaderSize, buf.end());
-        }
-    }
-
-    template <
-        typename T, std::size_t N,
-        typename = std::enable_if_t<std::is_convertible<T, uint8_t>::value>>
-    void assign(const std::array<T, N>& buf) {
-        // enforce that the buffer is big enough
-        static_assert(N >= HeaderSize,
-                      "std::array<T,N> buffer is not large enough");
-        // deserialize header
-        header = *(reinterpret_cast<const Header*>(buf.data()));
-        // set the payload bytes
-        payload.assign(buf.begin() + HeaderSize, buf.end());
-    }
-
-    template <typename T, typename = std::enable_if_t<
-                              std::is_convertible<T, uint8_t>::value>>
-    void pack(std::vector<T>* buf) const {
-        buf->reserve(size());
-        serializeToVector(header, buf);
-        buf->insert(buf->end(), payload.begin(), payload.end());
-    }
-
-    size_t size() const { return HeaderSize + payload.size(); }
-};
-
-}  // namespace rtp

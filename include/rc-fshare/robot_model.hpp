@@ -15,7 +15,7 @@ static constexpr double DegreesToRadians(double val) { return val * M_PI / 180.0
 
 private:
     RobotModel() {
-        WheelRadius = 0.02786;
+        WheelRadius = 0.0272;
         WheelAngles = {
             DegreesToRadians(180 - 30),  // M1
             DegreesToRadians(180 + 39),  // M2
@@ -23,7 +23,7 @@ private:
             DegreesToRadians(0 + 30),    // M4
         };
 
-        WheelDist = 0.0798576;
+        WheelDist = 0.0818;
 
         recalculateBotToWheel();
     }
@@ -75,7 +75,7 @@ public:
     // Choosen empirically on a no load robot
     // doing the average ratio between commanded speed
     // and output speed
-    float SpeedToDutyCycle = 5.0f;
+    float SpeedToDutyCycle = 3.632;
 };
 
 /// Model parameters for robot.  See RobotModel.cpp for values.

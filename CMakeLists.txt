@@ -1,33 +1,36 @@
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.8)
+project(robocup_fshare)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+find_package(ament_cmake REQUIRED)
+
 find_package(Eigen3 REQUIRED)
 
-add_library(rc-fshare STATIC
+add_library(robocup_fshare STATIC
     "src/pid.cpp"
     "src/git_version.cpp")
 
 # Robocup software uses it's own eigen find package for some reason, check for this
 if (TARGET Eigen3::Eigen)
   # Use the imported target
-    target_link_libraries(rc-fshare Eigen3::Eigen)
+    target_link_libraries(robocup_fshare Eigen3::Eigen)
 else (TARGET Eigen3::Eigen)
-    target_include_directories(rc-fshare PUBLIC ${EIGEN_INCLUDE_DIR})
+    target_include_directories(robocup_fshare PUBLIC ${EIGEN_INCLUDE_DIR})
 endif (TARGET Eigen3::Eigen)
 
 
 # All headers are assumed to be needed for the interface (PUBLIC)
-target_include_directories(rc-fshare PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
+target_include_directories(robocup_fshare PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
 # -fPIC
-set_property(TARGET rc-fshare PROPERTY POSITION_INDEPENDENT_CODE ON)
+set_property(TARGET robocup_fshare PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 # don't build unless `make git-version-test` explicitly called
 add_executable(git-version-test EXCLUDE_FROM_ALL
     "test/git_version_test.cpp")
-target_link_libraries(git-version-test rc-fshare)
+target_link_libraries(git-version-test robocup_fshare)
 
 
 # write git_version.cpp with the current git SHA and dirty status
@@ -89,3 +92,15 @@ add_custom_command(
     OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/src/git_version.cpp
     DEPENDS git_version
 )
+
+install(TARGETS ${PROJECT_NAME}
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin)
+
+install(DIRECTORY include/rc-fshare/
+  DESTINATION include/rc-fshare)
+
+ament_export_libraries(${PROJECT_NAME})
+ament_export_include_directories(include/)
+ament_package()

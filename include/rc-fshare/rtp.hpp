@@ -92,6 +92,8 @@ struct RobotTxMessage {
 static_assert(sizeof(RobotTxMessage) == 10,
               "sizeof(RobotTxMessage) is not what we expect");
 
+constexpr uint8_t MAX_DEBUG_FRAMES = 5;
+
 struct RobotStatusMessage {
     /** @battVoltage is a direct reading from the mbed's ADC and is sent over
      * the air as-is.  Soccer must convert this reading into an actual voltage
@@ -108,8 +110,30 @@ struct RobotStatusMessage {
     unsigned kickStatus : 1;       // 0 = uncharged, 1 = charged
     unsigned kickHealthy : 1;      // 0 = unhealthy, 1 = healthy
     unsigned fpgaStatus : 1;       // 0 = good, 1 = error
-    int16_t encDeltas[18];         // encoder changes since last packet
+
+	uint8_t num_frames;
+
+	// 8+40*4
+	struct DebugFrame {
+		uint64_t time_ticks;
+
+		float gyro_z;
+		float accel_x;
+		float accel_y;
+
+		float filtered_velocity[3];
+
+		float motor_outputs[4];
+
+		float encDeltas[4];         // encoder changes since last frame
+	} debug_frames[MAX_DEBUG_FRAMES];
 } __attribute__((packed));
+
+static_assert(sizeof(RobotStatusMessage::DebugFrame) == 64,
+              "sizeof(RobotStatusMessage::DebugFrame) is not what we expect");
+
+static_assert(sizeof(RobotStatusMessage) == 325,
+              "sizeof(RobotStatusMessage) is not what we expect");
 
 // Packet sizes
 static constexpr auto HeaderSize = sizeof(Header);
